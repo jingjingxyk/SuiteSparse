@@ -90,7 +90,9 @@ include_directories ( SPEX_Left_LU/Source SPEX_Util/Source Include
 
 file ( GLOB SPEX_SOURCES "SPEX*/Source/*.c" )
 
-add_library ( SPEX SHARED ${SPEX_SOURCES} )
+if ( NSTATIC )
+    add_library ( SPEX SHARED ${SPEX_SOURCES} )
+endif ( )
 
 set_target_properties ( SPEX PROPERTIES
     VERSION ${SPEX_VERSION_MAJOR}.${SPEX_VERSION_MINOR}.${SPEX_VERSION_SUB}

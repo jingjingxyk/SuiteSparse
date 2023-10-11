@@ -92,28 +92,26 @@ file ( GLOB SPEX_SOURCES "SPEX*/Source/*.c" )
 
 if ( NSTATIC )
     add_library ( SPEX SHARED ${SPEX_SOURCES} )
+    set_target_properties ( SPEX PROPERTIES
+        VERSION ${SPEX_VERSION_MAJOR}.${SPEX_VERSION_MINOR}.${SPEX_VERSION_SUB}
+        C_STANDARD 11
+        C_STANDARD_REQUIRED ON
+        OUTPUT_NAME spex
+        SOVERSION ${SPEX_VERSION_MAJOR}
+        PUBLIC_HEADER "Include/SPEX.h"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON )
+
+    target_include_directories ( SPEX
+        INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
+                  $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+
 endif ( )
-
-set_target_properties ( SPEX PROPERTIES
-    VERSION ${SPEX_VERSION_MAJOR}.${SPEX_VERSION_MINOR}.${SPEX_VERSION_SUB}
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
-    OUTPUT_NAME spex
-    SOVERSION ${SPEX_VERSION_MAJOR}
-    PUBLIC_HEADER "Include/SPEX.h"
-    WINDOWS_EXPORT_ALL_SYMBOLS ON )
-
-target_include_directories ( SPEX 
-    INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
-              $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
-
 #-------------------------------------------------------------------------------
 # static spex library properties
 #-------------------------------------------------------------------------------
 
 if ( NOT NSTATIC )
     add_library ( SPEX_static STATIC ${SPEX_SOURCES} )
-
     set_target_properties ( SPEX_static PROPERTIES
         VERSION ${SPEX_VERSION_MAJOR}.${SPEX_VERSION_MINOR}.${SPEX_VERSION_SUB}
         C_STANDARD 11
@@ -137,9 +135,12 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 # SuiteSparseConfig:
-target_link_libraries ( SPEX PRIVATE SuiteSparse::SuiteSparseConfig )
-target_include_directories ( SPEX PUBLIC
-    "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
+if ( NSTATIC )
+    target_link_libraries ( SPEX PRIVATE SuiteSparse::SuiteSparseConfig )
+    target_include_directories ( SPEX PUBLIC
+        "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
+endif ( )
+
 if ( NOT NSTATIC )
     if ( TARGET SuiteSparse::SuiteSparseConfig_static )
         target_link_libraries ( SPEX_static PUBLIC SuiteSparse::SuiteSparseConfig_static )
@@ -149,7 +150,10 @@ if ( NOT NSTATIC )
 endif ( )
 
 # AMD:
-target_link_libraries ( SPEX PRIVATE SuiteSparse::AMD )
+if ( NSTATIC )
+    target_link_libraries ( SPEX PRIVATE SuiteSparse::AMD )
+endif ( )
+
 if ( NOT NSTATIC )
     if ( TARGET SuiteSparse::AMD_static )
         target_link_libraries ( SPEX_static PUBLIC SuiteSparse::AMD_static )
@@ -159,7 +163,10 @@ if ( NOT NSTATIC )
 endif ( )
 
 # COLAMD:
-target_link_libraries ( SPEX PRIVATE SuiteSparse::COLAMD )
+if ( NSTATIC )
+    target_link_libraries ( SPEX PRIVATE SuiteSparse::COLAMD )
+endif ( )
+
 if ( NOT NSTATIC )
     if ( TARGET SuiteSparse::COLAMD_static )
         target_link_libraries ( SPEX_static PUBLIC SuiteSparse::COLAMD_static )
@@ -169,7 +176,10 @@ if ( NOT NSTATIC )
 endif ( )
 
 # MPFR:
-target_link_libraries ( SPEX PRIVATE ${MPFR_LIBRARIES} )
+if ( NSTATIC )
+    target_link_libraries ( SPEX PRIVATE ${MPFR_LIBRARIES} )
+endif ( )
+
 if ( NOT NSTATIC )
     list ( APPEND SPEX_STATIC_LIBS ${MPFR_STATIC} )
     target_link_libraries ( SPEX_static PUBLIC ${MPFR_STATIC} )
@@ -177,7 +187,10 @@ endif ( )
 
 # GMP:
 # must occur after MPFR
-target_link_libraries ( SPEX PRIVATE ${GMP_LIBRARIES} )
+if ( NSTATIC )
+    target_link_libraries ( SPEX PRIVATE ${GMP_LIBRARIES} )
+endif ( )
+
 if ( NOT NSTATIC )
     list ( APPEND SPEX_STATIC_LIBS ${GMP_STATIC} )
     target_link_libraries ( SPEX_static PUBLIC ${GMP_STATIC} )
@@ -185,7 +198,9 @@ endif ( )
 
 # libm:
 if ( NOT WIN32 )
-    target_link_libraries ( SPEX PRIVATE m )
+    if ( NSTATIC )
+        target_link_libraries ( SPEX PRIVATE m )
+    endif ( )
     if ( NOT NSTATIC )
         list ( APPEND SPEX_STATIC_LIBS "m" )
         target_link_libraries ( SPEX_static PUBLIC m )
@@ -198,12 +213,15 @@ endif ( )
 
 include ( CMakePackageConfigHelpers )
 
-install ( TARGETS SPEX
-    EXPORT SPEXTargets
-    LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
-    ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-    RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
-    PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+if ( NSTATIC )
+    install ( TARGETS SPEX
+        EXPORT SPEXTargets
+        LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+endif ( )
+
 if ( NOT NSTATIC )
     install ( TARGETS SPEX_static
         EXPORT SPEXTargets
@@ -250,7 +268,11 @@ if ( NOT MSVC )
             set ( SPEX_STATIC_LIBS "${SPEX_STATIC_LIBS} -l${_lib}" )
             continue ()
         endif ( )
-        set ( _kinds "SHARED" "STATIC" )
+        if ( NSTATIC )
+            set ( _kinds "SHARED" )
+        else ( )
+            set ( _kinds "STATIC" )
+        endif ( )
         if ( WIN32 )
             list ( PREPEND _kinds "IMPORT" )
         endif ( )
@@ -329,4 +351,5 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 include ( SuiteSparseReport )
+
 
